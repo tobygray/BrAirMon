@@ -37,6 +37,20 @@ const int DISPLAY_HEIGHT = 2;
 const uint8_t EMPTY_CHAR = 0;
 const uint8_t FILLED_CHAR = 1;
 
+const char* BOOT_PHRASES[] = {
+  "Pre-heating     ",
+  "Ionizing Gates  ",
+  "Inverting Matrix",
+  "Counting Atoms  ",
+  "Blending Splines",
+  "Shifting Phase  ",
+  "Warming Polarity",
+  "Calibrating Ptz.",
+  "Tweaking IR bulb",
+  "Checking Cloud  ",
+  "   -- Done --   ",
+};
+
 LiquidCrystal lcd(PIN_RESET,  PIN_ENABLED,  PIN_DATA_1,  PIN_DATA_2,  PIN_DATA_3,  PIN_DATA_4);
 
 void setup() {
@@ -64,6 +78,8 @@ int drawBoot() {
   }
   lcd.print(percent);
   lcd.print("%");
+  lcd.setCursor(0, 1);
+  lcd.print(BOOT_PHRASES[offset]);
   return done;
 }
 
