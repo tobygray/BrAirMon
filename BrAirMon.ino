@@ -31,11 +31,22 @@ byte FILLED_CHAR_DATA[] {
   B11111,
   B11111,
 };
+byte DEGREE_CHAR_DATA[] {
+  B01100,
+  B10010,
+  B10010,
+  B01100,
+  B00000,
+  B00000,
+  B00000,
+  B00000,
+};
 
 const int DISPLAY_WIDTH = 16;
 const int DISPLAY_HEIGHT = 2;
 const uint8_t EMPTY_CHAR = 0;
 const uint8_t FILLED_CHAR = 1;
+const uint8_t DEGREE_CHAR = 2;
 
 const char* BOOT_PHRASES[] = {
   "Pre-heating     ",
@@ -56,7 +67,20 @@ LiquidCrystal lcd(PIN_RESET,  PIN_ENABLED,  PIN_DATA_1,  PIN_DATA_2,  PIN_DATA_3
 void setup() {
  lcd.begin(DISPLAY_WIDTH, DISPLAY_HEIGHT);
  lcd.createChar(EMPTY_CHAR, EMPTY_CHAR_DATA);
- lcd.createChar(FILLED_CHAR, FILLED_CHAR_DATA); 
+ lcd.createChar(FILLED_CHAR, FILLED_CHAR_DATA);
+ lcd.createChar(DEGREE_CHAR, DEGREE_CHAR_DATA);
+}
+
+void pad_value(int value, int digits) {
+  int digit_count = 1;
+  while (value > 9) {
+    value /= 10;
+    digit_count += 1;
+  }
+  while (digit_count < digits) {
+    digit_count += 1;
+    lcd.write(" ");
+  }
 }
 
 int drawBoot() {
@@ -76,11 +100,28 @@ int drawBoot() {
     percent = 100;
     done = 1;
   }
+  pad_value(percent, 3);
   lcd.print(percent);
   lcd.print("%");
   lcd.setCursor(0, 1);
   lcd.print(BOOT_PHRASES[offset]);
   return done;
+}
+
+void display_values(int temp, int humidity, int carbon_dioxide) {
+  lcd.setCursor(0, 0);
+  pad_value(temp, 3);
+  lcd.print(temp);
+  lcd.write(DEGREE_CHAR);
+  lcd.print("C");
+  lcd.setCursor(8, 0);
+  pad_value(humidity, 3);
+  lcd.print(humidity);
+  lcd.print("%rh");
+  lcd.setCursor(0, 1);
+  pad_value(carbon_dioxide, 4);
+  lcd.print(carbon_dioxide);
+  lcd.print("ppm CO2");
 }
 
 void loop() {
@@ -94,6 +135,11 @@ void loop() {
     return;
   }
 
+  int temp = 123; // TODO
+  int humidity = 456; // TODO
+  int carbon_dioxide = 1234; // TODO read
+
+  display_values(temp, humidity, carbon_dioxide);
   int x;
   x = analogRead (0);
   lcd.setCursor(10,1);
