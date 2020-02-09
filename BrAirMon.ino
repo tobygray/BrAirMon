@@ -18,8 +18,8 @@ const int PIN_TX = A2;
 const int PIN_CALIBRATE = 2;
 const int PIN_DHT = 3;
 #define DHTTYPE DHT22
-// CO2 sensor takes 2 minutes to calibrate.
-const int STARTUP_TIME_S = 120;
+// CO2 sensor takes 3 minutes to warm up.
+const int STARTUP_TIME_S = 3 * 60;
 
 byte EMPTY_CHAR_DATA[] {
   B11111,
@@ -58,6 +58,10 @@ const uint8_t EMPTY_CHAR = 0;
 const uint8_t FILLED_CHAR = 1;
 const uint8_t DEGREE_CHAR = 2;
 
+const byte CMD_GET_VALUE = 0x86;
+const byte CMD_SET_ZERO = 0x87;
+const byte CMD_SET_SPAN = 0x88;
+
 const char* BOOT_PHRASES[] = {
   "Pre-heating     ",
   "Ionizing Gates  ",
@@ -77,9 +81,22 @@ LiquidCrystal lcd(PIN_RESET,  PIN_ENABLED,  PIN_DATA_1,  PIN_DATA_2,  PIN_DATA_3
 DHT dht(PIN_DHT, DHTTYPE);
 SoftwareSerial sensor(PIN_RX, PIN_TX);
 
-const byte requestReading[] = {0xFF, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79};
-byte result[9];
-long lastSampleTime = 0;
+void sendCommand(byte cmd, int value) {
+  byte request[9];
+  // From https://www.winsen-sensor.com/d/files/PDF/Infrared%20Gas%20Sensor/NDIR%20CO2%20SENSOR/MH-Z14%20CO2%20V2.4.pdf
+  request[0] = 0xFF;
+  request[1] = 0x01;
+  request[2] = cmd;
+  request[3] = (value >> 8) & 0xFF;
+  request[4] = value & 0xFF;
+  request[5] = 0;
+  request[6] = 0;
+  request[7] = 0;
+  request[8] = ~(request[1] + request[2] + request[3] + request[4]) + 1;
+  for (int i = 0; i < 9; i++) {
+    sensor.write(request[i]);
+  }
+}
 
 void setup() {
   Serial.begin(9600);
@@ -157,15 +174,20 @@ void display_values(int temp, int humidity, int carbon_dioxide) {
 }
 
 int readPPMSerial() {
-  for (int i = 0; i < 9; i++) {
-    sensor.write(requestReading[i]);
-  }
+  sendCommand(CMD_GET_VALUE, 0);
+  byte result[9];
   while (sensor.available() < 9) {}; // wait for response
   for (int i = 0; i < 9; i++) {
     result[i] = sensor.read();
   }
   int high = result[2];
   int low = result[3];
+  if (result[4] != 0x3D) {
+    // Log unexpected value.
+    Serial.print("T: ");
+    Serial.print((int)result[4]);
+    Serial.print("\n");
+  }
   return high * 256 + low;
 }
 
