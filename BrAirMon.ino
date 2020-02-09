@@ -105,6 +105,10 @@ void pad_value(int value, int digits) {
   }
 }
 
+bool isSelectButton(int x) {
+  return x > 600 && x < 800;
+}
+
 int drawBoot() {
   int offset = millis() / (STARTUP_TIME_S * 100);
   for (int i = 0; i < 10; ++i) {
@@ -129,7 +133,7 @@ int drawBoot() {
   lcd.print(BOOT_PHRASES[offset]);
   int x;
   x = analogRead(0);
-  if (x < 800 && x > 600) {
+  if (isSelectButton(x)) {
     // Select pressed, skip boot.
     done = true;
   }
@@ -168,6 +172,8 @@ int readPPMSerial() {
 void loop() {
   delay(50);
   static int boot_done = 0;
+  static unsigned long next_serial = 0;
+
   if (!boot_done) {
     boot_done = drawBoot();
     if (boot_done) {
@@ -184,22 +190,15 @@ void loop() {
   int carbon_dioxide = readPPMSerial();
 
   display_values(temp, humidity, carbon_dioxide);
-  int x;
-  x = analogRead (0);
-  lcd.setCursor(10,1);
-  if (x < 60) {
-    Serial.print(" Right");
-  }
-  else if (x < 200) {
-    Serial.print("    Up");
-  }
-  else if (x < 400){
-    Serial.print("  Down");
-  }
-  else if (x < 600){
-    Serial.print("  Left");
-  }
-  else if (x < 800){
-    Serial.print("Select");
+  if (millis() > next_serial) {
+    Serial.print(millis());
+    Serial.print(",");
+    Serial.print(temp_float);
+    Serial.print(",");
+    Serial.print(humidity_float);
+    Serial.print(",");
+    Serial.print(carbon_dioxide);
+    Serial.print("\n");
+    next_serial += 1000;
   }
 } 
