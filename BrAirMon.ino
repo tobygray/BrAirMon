@@ -4,6 +4,7 @@
 // Needs https://github.com/adafruit/DHT-sensor-library and https://github.com/adafruit/Adafruit_Sensor
 #include <Adafruit_Sensor.h>
 #include "DHT.h"
+#include <SoftwareSerial.h>
 //LCD pin to Arduino
 const int PIN_RESET = 8;
 const int PIN_ENABLED = 9;
@@ -12,7 +13,10 @@ const int PIN_DATA_2 = 5;
 const int PIN_DATA_3 = 6;
 const int PIN_DATA_4 = 7;
 const int PIN_BACKLIGHT = 10;
-#define DHTPIN 3
+const int PIN_RX = A1;
+const int PIN_TX = A2;
+const int PIN_CALIBRATE = 2;
+const int PIN_DHT = 3;
 #define DHTTYPE DHT22
 // CO2 sensor takes 2 minutes to calibrate.
 const int STARTUP_TIME_S = 120;
@@ -70,14 +74,23 @@ const char* BOOT_PHRASES[] = {
 
 LiquidCrystal lcd(PIN_RESET,  PIN_ENABLED,  PIN_DATA_1,  PIN_DATA_2,  PIN_DATA_3,  PIN_DATA_4);
 
-DHT dht(DHTPIN, DHTTYPE);
+DHT dht(PIN_DHT, DHTTYPE);
+SoftwareSerial sensor(PIN_RX, PIN_TX);
+
+const byte requestReading[] = {0xFF, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79};
+byte result[9];
+long lastSampleTime = 0;
 
 void setup() {
+  Serial.begin(9600);
+  sensor.begin(9600);
   lcd.begin(DISPLAY_WIDTH, DISPLAY_HEIGHT);
   lcd.createChar(EMPTY_CHAR, EMPTY_CHAR_DATA);
   lcd.createChar(FILLED_CHAR, FILLED_CHAR_DATA);
   lcd.createChar(DEGREE_CHAR, DEGREE_CHAR_DATA);
   dht.begin();
+  pinMode(PIN_CALIBRATE, OUTPUT);
+  digitalWrite(PIN_CALIBRATE, HIGH);
 }
 
 void pad_value(int value, int digits) {
@@ -114,6 +127,12 @@ int drawBoot() {
   lcd.print("%");
   lcd.setCursor(0, 1);
   lcd.print(BOOT_PHRASES[offset]);
+  int x;
+  x = analogRead(0);
+  if (x < 800 && x > 600) {
+    // Select pressed, skip boot.
+    done = true;
+  }
   return done;
 }
 
@@ -133,7 +152,21 @@ void display_values(int temp, int humidity, int carbon_dioxide) {
   lcd.print("ppm CO2");
 }
 
+int readPPMSerial() {
+  for (int i = 0; i < 9; i++) {
+    sensor.write(requestReading[i]);
+  }
+  while (sensor.available() < 9) {}; // wait for response
+  for (int i = 0; i < 9; i++) {
+    result[i] = sensor.read();
+  }
+  int high = result[2];
+  int low = result[3];
+  return high * 256 + low;
+}
+
 void loop() {
+  delay(50);
   static int boot_done = 0;
   if (!boot_done) {
     boot_done = drawBoot();
@@ -147,26 +180,26 @@ void loop() {
   float temp_float = dht.readTemperature();
 
   int temp = temp_float;
-  int humidity = humidity_float * 100;
-  int carbon_dioxide = 1234; // TODO read
+  int humidity = humidity_float;
+  int carbon_dioxide = readPPMSerial();
 
   display_values(temp, humidity, carbon_dioxide);
   int x;
   x = analogRead (0);
   lcd.setCursor(10,1);
   if (x < 60) {
-    lcd.print (" Right");
+    Serial.print(" Right");
   }
   else if (x < 200) {
-    lcd.print ("    Up");
+    Serial.print("    Up");
   }
   else if (x < 400){
-    lcd.print ("  Down");
+    Serial.print("  Down");
   }
   else if (x < 600){
-    lcd.print ("  Left");
+    Serial.print("  Left");
   }
   else if (x < 800){
-    lcd.print ("Select");
+    Serial.print("Select");
   }
 } 
