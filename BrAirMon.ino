@@ -1,5 +1,9 @@
 // (C) 2020 - Toby Gray <toby.gray@gmail.com>
+
 #include <LiquidCrystal.h>
+// Needs https://github.com/adafruit/DHT-sensor-library and https://github.com/adafruit/Adafruit_Sensor
+#include <Adafruit_Sensor.h>
+#include "DHT.h"
 //LCD pin to Arduino
 const int PIN_RESET = 8;
 const int PIN_ENABLED = 9;
@@ -8,6 +12,8 @@ const int PIN_DATA_2 = 5;
 const int PIN_DATA_3 = 6;
 const int PIN_DATA_4 = 7;
 const int PIN_BACKLIGHT = 10;
+#define DHTPIN 3
+#define DHTTYPE DHT22
 // CO2 sensor takes 2 minutes to calibrate.
 const int STARTUP_TIME_S = 120;
 
@@ -64,11 +70,14 @@ const char* BOOT_PHRASES[] = {
 
 LiquidCrystal lcd(PIN_RESET,  PIN_ENABLED,  PIN_DATA_1,  PIN_DATA_2,  PIN_DATA_3,  PIN_DATA_4);
 
+DHT dht(DHTPIN, DHTTYPE);
+
 void setup() {
- lcd.begin(DISPLAY_WIDTH, DISPLAY_HEIGHT);
- lcd.createChar(EMPTY_CHAR, EMPTY_CHAR_DATA);
- lcd.createChar(FILLED_CHAR, FILLED_CHAR_DATA);
- lcd.createChar(DEGREE_CHAR, DEGREE_CHAR_DATA);
+  lcd.begin(DISPLAY_WIDTH, DISPLAY_HEIGHT);
+  lcd.createChar(EMPTY_CHAR, EMPTY_CHAR_DATA);
+  lcd.createChar(FILLED_CHAR, FILLED_CHAR_DATA);
+  lcd.createChar(DEGREE_CHAR, DEGREE_CHAR_DATA);
+  dht.begin();
 }
 
 void pad_value(int value, int digits) {
@@ -134,9 +143,11 @@ void loop() {
     }
     return;
   }
+  float humidity_float = dht.readHumidity();
+  float temp_float = dht.readTemperature();
 
-  int temp = 123; // TODO
-  int humidity = 456; // TODO
+  int temp = temp_float;
+  int humidity = humidity_float * 100;
   int carbon_dioxide = 1234; // TODO read
 
   display_values(temp, humidity, carbon_dioxide);
