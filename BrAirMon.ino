@@ -1,10 +1,12 @@
 // (C) 2020 - Toby Gray <toby.gray@gmail.com>
-
 #include <LiquidCrystal.h>
 // Needs https://github.com/adafruit/DHT-sensor-library and https://github.com/adafruit/Adafruit_Sensor
 #include <Adafruit_Sensor.h>
 #include "DHT.h"
 #include <SoftwareSerial.h>
+
+#include <avr/wdt.h>
+
 //LCD pin to Arduino
 const int PIN_RESET = 8;
 const int PIN_ENABLED = 9;
@@ -108,6 +110,8 @@ void setup() {
   dht.begin();
   pinMode(PIN_CALIBRATE, OUTPUT);
   digitalWrite(PIN_CALIBRATE, HIGH);
+  // Enable watchdog.
+  wdt_enable(WDTO_1S);
 }
 
 void pad_value(int value, int digits) {
@@ -196,6 +200,8 @@ void loop() {
   static int boot_done = 0;
   static unsigned long next_serial = 0;
 
+  // Tell the watchdog we're still alive.
+  wdt_reset();
   if (!boot_done) {
     boot_done = drawBoot();
     if (boot_done) {
